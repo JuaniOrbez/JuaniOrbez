@@ -1,8 +1,5 @@
 - 👋 Hi, I’m @JuaniOrbez
 - 👀 I’m interested in html, css, php, Javascript
-- 🌱 I’m currently learning 
-- 💞️ I’m looking to collaborate on ...
-- 📫 How to reach me ...
 
 <!---
 JuaniOrbez/JuaniOrbez is a ✨ special ✨ repository because its `README.md` (this file) appears on your GitHub profile.
