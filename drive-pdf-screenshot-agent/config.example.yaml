@@ -1,0 +1,30 @@
+# Copia este archivo a config.yaml y completá tus valores.
+
+# ID de la carpeta de Google Drive donde están los PDFs.
+# Se obtiene de la URL: https://drive.google.com/drive/folders/<ESTE_ID>
+drive_folder_id: "PON_ACA_EL_ID_DE_LA_CARPETA"
+
+# Palabras o frases a buscar en cada página. Si una página contiene
+# alguna de estas (sin importar mayúsculas/minúsculas), se le saca screenshot.
+keywords:
+  - "Total a pagar"
+  - "Resumen de cuenta"
+
+# Carpeta local donde se guardan las imágenes generadas.
+output_dir: "./output"
+
+# Carpeta local temporal donde se descargan los PDFs antes de procesarlos.
+downloads_dir: "./downloads"
+
+# Resolución de las imágenes: factor de zoom sobre el tamaño original de la
+# página (2.0 ≈ 144 DPI, 3.0 ≈ 216 DPI). Valores más altos = imágenes más
+# grandes y nítidas, pero más pesadas.
+zoom: 2.0
+
+# Archivo de credenciales OAuth descargado desde Google Cloud Console
+# (tipo "Desktop app"). Ver README.md para cómo generarlo.
+credentials_file: "credentials.json"
+
+# Archivo donde se guarda el token de sesión luego del primer login
+# (se genera solo, no hace falta crearlo a mano).
+token_file: "token.json"
