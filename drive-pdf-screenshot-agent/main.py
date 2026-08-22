@@ -9,18 +9,17 @@ Ver README.md para instrucciones de configuración.
 """
 
 import argparse
-import io
 import os
 import sys
 import time
 
 import fitz  # PyMuPDF
+import requests
 import yaml
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseDownload
 
 SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
 
@@ -55,7 +54,7 @@ def get_drive_service(credentials_file, token_file):
         with open(token_file, "w", encoding="utf-8") as f:
             f.write(creds.to_json())
 
-    return build("drive", "v3", credentials=creds)
+    return creds, build("drive", "v3", credentials=creds)
 
 
 def list_pdfs(service, folder_id):
@@ -80,37 +79,45 @@ def list_pdfs(service, folder_id):
     return files
 
 
-def download_pdf(service, file_id, destination, retries_per_chunk=6, chunk_size=8 * 1024 * 1024):
-    """Descarga el archivo en partes de 8 MB, reintentando solo la parte que
-    falla en vez de todo el archivo desde cero. Partes más chicas suman más
-    conexiones (y por lo tanto más chances de que una se corte), así que se
-    busca un equilibrio: pocas partes grandes, pero sin perder todo el
-    progreso si una falla a mitad de camino."""
-    request = service.files().get_media(fileId=file_id)
-    with io.FileIO(destination, "wb") as fh:
-        downloader = MediaIoBaseDownload(fh, request, chunksize=chunk_size)
-        done = False
-        attempt = 0
-        while not done:
-            try:
-                _, done = downloader.next_chunk()
-                attempt = 0
-            except (OSError, TimeoutError) as e:
-                attempt += 1
-                downloaded_mb = downloader._progress / (1024 * 1024)
-                total_mb = (
-                    f"{downloader._total_size / (1024 * 1024):.1f}"
-                    if downloader._total_size
-                    else "?"
-                )
-                if attempt >= retries_per_chunk:
-                    raise
-                wait_seconds = 5 * attempt
-                print(
-                    f"  (falló una parte de la descarga en {downloaded_mb:.1f}/{total_mb} MB, "
-                    f"intento {attempt}/{retries_per_chunk}: {e}, reintentando en {wait_seconds}s...)"
-                )
-                time.sleep(wait_seconds)
+def download_pdf(creds, file_id, destination, retries=6):
+    """Descarga el archivo usando `requests`, con soporte de reanudación por
+    HTTP Range: si se corta a mitad de camino, el reintento sigue desde el
+    último byte recibido en vez de empezar de cero."""
+    url = f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media"
+    downloaded = 0
+    total_size = None
+
+    for attempt in range(1, retries + 1):
+        headers = {"Authorization": f"Bearer {creds.token}"}
+        mode = "wb"
+        if downloaded:
+            headers["Range"] = f"bytes={downloaded}-"
+            mode = "ab"
+        try:
+            with requests.get(url, headers=headers, stream=True, timeout=(15, 60)) as resp:
+                resp.raise_for_status()
+                if total_size is None:
+                    content_range = resp.headers.get("Content-Range")
+                    if content_range and "/" in content_range:
+                        total_size = int(content_range.rsplit("/", 1)[-1])
+                    else:
+                        total_size = int(resp.headers.get("Content-Length", 0)) or None
+                with open(destination, mode) as fh:
+                    for chunk in resp.iter_content(chunk_size=256 * 1024):
+                        if chunk:
+                            fh.write(chunk)
+                            downloaded += len(chunk)
+            return
+        except (requests.exceptions.RequestException, OSError) as e:
+            if attempt >= retries:
+                raise
+            total_label = f"{total_size / (1024 * 1024):.1f}" if total_size else "?"
+            wait_seconds = 5 * attempt
+            print(
+                f"  (falló la descarga en {downloaded / (1024 * 1024):.1f}/{total_label} MB, "
+                f"intento {attempt}/{retries}: {e}, reintentando en {wait_seconds}s...)"
+            )
+            time.sleep(wait_seconds)
 
 
 def sanitize_filename(name):
@@ -165,7 +172,7 @@ def run_with_config(config):
     os.makedirs(output_dir, exist_ok=True)
     os.makedirs(downloads_dir, exist_ok=True)
 
-    service = get_drive_service(credentials_file, token_file)
+    creds, service = get_drive_service(credentials_file, token_file)
     pdfs = list_pdfs(service, folder_id)
 
     if not pdfs:
@@ -182,7 +189,7 @@ def run_with_config(config):
         size_label = f" ({size_mb:.1f} MB)" if size_mb is not None else ""
         print(f"Descargando: {pdf['name']}{size_label}")
         try:
-            download_pdf(service, pdf["id"], local_path)
+            download_pdf(creds, pdf["id"], local_path)
             saved = extract_matching_pages(local_path, keywords, output_dir, zoom)
         except Exception as e:  # noqa: BLE001
             print(f"  -> ERROR, se salteó este PDF: {e}")
