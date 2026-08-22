@@ -65,28 +65,30 @@ Editá `config.yaml`:
 
 Hay dos formas de usarlo:
 
-**Opción A — interfaz gráfica (recomendada, sin terminal):**
+**Opción A — interfaz web local (recomendada, sin terminal):**
 
 Una vez hecho el setup inicial (pasos 1 a 3), para el uso del día a día
-alcanza con hacer **doble clic en `Abrir App.command`**. Se abre una ventana
-donde podés:
+alcanza con hacer **doble clic en `Abrir App.command`**. Se abre tu
+navegador (Chrome/Safari) en una página local donde podés:
 
 - Pegar el ID o el link de la carpeta de Drive.
 - Escribir las palabras clave (una por línea).
-- Elegir la carpeta de salida con un selector de carpetas.
-- Tocar **"Ejecutar"** y ver el progreso en el registro de la ventana.
-- Tocar **"Abrir carpeta de resultados"** para ver las imágenes generadas.
+- Escribir/pegar la ruta de la carpeta de salida.
+- Tocar **"Ejecutar"** y ver el resultado abajo de la página.
+- Tocar **"Abrir carpeta de resultados"** para ver las imágenes generadas
+  en el Finder.
 
-Los cambios que hagas en la ventana se guardan en `config.yaml` al ejecutar
-(o con el botón "Guardar configuración").
-
-> Si al abrir la app te aparece un error de `_tkinter` o `No module named
-> tkinter`, instalá el soporte de Tk con `brew install python-tk` y volvé a
-> intentar.
+Los valores que ingreses quedan guardados en `config.yaml` al ejecutar. La
+página solo es accesible desde tu propia computadora (no queda expuesta a
+internet ni a tu red).
 
 > La primera vez que hagas doble clic puede que macOS bloquee el archivo por
 > venir de "un desarrollador no identificado". Si pasa eso: click derecho
 > sobre `Abrir App.command` → **Abrir** → confirmar en el diálogo.
+
+> Si el navegador no se abre solo, andá manualmente a
+> [http://127.0.0.1:5050](http://127.0.0.1:5050) mientras la ventana de
+> Terminal que se abrió siga corriendo (no la cierres mientras usás la app).
 
 **Opción B — línea de comandos:**
 

@@ -9,7 +9,7 @@ if [ ! -d "venv" ]; then
 fi
 
 source venv/bin/activate
-python app.py
+python webapp.py
 
 echo ""
 read -p "Presioná Enter para cerrar esta ventana."
