@@ -80,27 +80,30 @@ def list_pdfs(service, folder_id):
     return files
 
 
-def download_pdf(service, file_id, destination, retries=3):
+def download_pdf(service, file_id, destination, retries_per_chunk=5, chunk_size=2 * 1024 * 1024):
+    """Descarga el archivo en partes chicas (por defecto 2 MB), reintentando
+    solo la parte que falla en vez de todo el archivo desde cero. Esto evita
+    perder el progreso ya descargado cuando un archivo grande se corta a
+    mitad de camino."""
     request = service.files().get_media(fileId=file_id)
-    last_error = None
-    for attempt in range(1, retries + 1):
-        try:
-            with io.FileIO(destination, "wb") as fh:
-                downloader = MediaIoBaseDownload(fh, request)
-                done = False
-                while not done:
-                    _, done = downloader.next_chunk()
-            return
-        except (OSError, TimeoutError) as e:
-            last_error = e
-            if attempt < retries:
+    with io.FileIO(destination, "wb") as fh:
+        downloader = MediaIoBaseDownload(fh, request, chunksize=chunk_size)
+        done = False
+        attempt = 0
+        while not done:
+            try:
+                _, done = downloader.next_chunk()
+                attempt = 0
+            except (OSError, TimeoutError) as e:
+                attempt += 1
+                if attempt >= retries_per_chunk:
+                    raise
                 wait_seconds = 5 * attempt
                 print(
-                    f"  (falló el intento {attempt}/{retries}: {e}, "
-                    f"reintentando en {wait_seconds}s...)"
+                    f"  (falló una parte de la descarga, intento {attempt}/{retries_per_chunk}: "
+                    f"{e}, reintentando en {wait_seconds}s...)"
                 )
                 time.sleep(wait_seconds)
-    raise last_error
 
 
 def sanitize_filename(name):
