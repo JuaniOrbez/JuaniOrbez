@@ -80,11 +80,12 @@ def list_pdfs(service, folder_id):
     return files
 
 
-def download_pdf(service, file_id, destination, retries_per_chunk=5, chunk_size=2 * 1024 * 1024):
-    """Descarga el archivo en partes chicas (por defecto 2 MB), reintentando
+def download_pdf(service, file_id, destination, retries_per_chunk=10, chunk_size=512 * 1024):
+    """Descarga el archivo en partes chicas (por defecto 512 KB), reintentando
     solo la parte que falla en vez de todo el archivo desde cero. Esto evita
     perder el progreso ya descargado cuando un archivo grande se corta a
-    mitad de camino."""
+    mitad de camino, y le da a conexiones lentas/inestables más chances de
+    completar cada parte antes de rendirse."""
     request = service.files().get_media(fileId=file_id)
     with io.FileIO(destination, "wb") as fh:
         downloader = MediaIoBaseDownload(fh, request, chunksize=chunk_size)
