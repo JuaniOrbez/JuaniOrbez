@@ -68,7 +68,7 @@ def list_pdfs(service, folder_id):
             .list(
                 q=query,
                 spaces="drive",
-                fields="nextPageToken, files(id, name)",
+                fields="nextPageToken, files(id, name, size)",
                 pageToken=page_token,
             )
             .execute()
@@ -96,12 +96,18 @@ def download_pdf(service, file_id, destination, retries_per_chunk=5, chunk_size=
                 attempt = 0
             except (OSError, TimeoutError) as e:
                 attempt += 1
+                downloaded_mb = downloader._progress / (1024 * 1024)
+                total_mb = (
+                    f"{downloader._total_size / (1024 * 1024):.1f}"
+                    if downloader._total_size
+                    else "?"
+                )
                 if attempt >= retries_per_chunk:
                     raise
                 wait_seconds = 5 * attempt
                 print(
-                    f"  (falló una parte de la descarga, intento {attempt}/{retries_per_chunk}: "
-                    f"{e}, reintentando en {wait_seconds}s...)"
+                    f"  (falló una parte de la descarga en {downloaded_mb:.1f}/{total_mb} MB, "
+                    f"intento {attempt}/{retries_per_chunk}: {e}, reintentando en {wait_seconds}s...)"
                 )
                 time.sleep(wait_seconds)
 
@@ -171,7 +177,9 @@ def run_with_config(config):
     failed = []
     for pdf in pdfs:
         local_path = os.path.join(downloads_dir, sanitize_filename(pdf["name"]))
-        print(f"Descargando: {pdf['name']}")
+        size_mb = int(pdf["size"]) / (1024 * 1024) if pdf.get("size") else None
+        size_label = f" ({size_mb:.1f} MB)" if size_mb is not None else ""
+        print(f"Descargando: {pdf['name']}{size_label}")
         try:
             download_pdf(service, pdf["id"], local_path)
             saved = extract_matching_pages(local_path, keywords, output_dir, zoom)
