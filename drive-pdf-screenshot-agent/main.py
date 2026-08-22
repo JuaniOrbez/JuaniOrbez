@@ -120,8 +120,15 @@ def main():
     parser.add_argument("--config", default="config.yaml", help="Ruta al archivo de configuración")
     args = parser.parse_args()
 
-    config = load_config(args.config)
+    run_with_config(load_config(args.config))
 
+
+def main_with_config(config_path):
+    """Punto de entrada para invocar el agente desde otro código (ej. app.py)."""
+    run_with_config(load_config(config_path))
+
+
+def run_with_config(config):
     folder_id = config["drive_folder_id"]
     keywords = config["keywords"]
     output_dir = config["output_dir"]

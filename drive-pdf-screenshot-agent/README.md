@@ -63,6 +63,33 @@ Editá `config.yaml`:
 
 ### 4. Ejecutar
 
+Hay dos formas de usarlo:
+
+**Opción A — interfaz gráfica (recomendada, sin terminal):**
+
+Una vez hecho el setup inicial (pasos 1 a 3), para el uso del día a día
+alcanza con hacer **doble clic en `Abrir App.command`**. Se abre una ventana
+donde podés:
+
+- Pegar el ID o el link de la carpeta de Drive.
+- Escribir las palabras clave (una por línea).
+- Elegir la carpeta de salida con un selector de carpetas.
+- Tocar **"Ejecutar"** y ver el progreso en el registro de la ventana.
+- Tocar **"Abrir carpeta de resultados"** para ver las imágenes generadas.
+
+Los cambios que hagas en la ventana se guardan en `config.yaml` al ejecutar
+(o con el botón "Guardar configuración").
+
+> Si al abrir la app te aparece un error de `_tkinter` o `No module named
+> tkinter`, instalá el soporte de Tk con `brew install python-tk` y volvé a
+> intentar.
+
+> La primera vez que hagas doble clic puede que macOS bloquee el archivo por
+> venir de "un desarrollador no identificado". Si pasa eso: click derecho
+> sobre `Abrir App.command` → **Abrir** → confirmar en el diálogo.
+
+**Opción B — línea de comandos:**
+
 ```bash
 python main.py
 ```
