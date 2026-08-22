@@ -12,6 +12,7 @@ import argparse
 import io
 import os
 import sys
+import time
 
 import fitz  # PyMuPDF
 import yaml
@@ -93,7 +94,12 @@ def download_pdf(service, file_id, destination, retries=3):
         except (OSError, TimeoutError) as e:
             last_error = e
             if attempt < retries:
-                print(f"  (falló el intento {attempt}/{retries}: {e}, reintentando...)")
+                wait_seconds = 5 * attempt
+                print(
+                    f"  (falló el intento {attempt}/{retries}: {e}, "
+                    f"reintentando en {wait_seconds}s...)"
+                )
+                time.sleep(wait_seconds)
     raise last_error
 
 
