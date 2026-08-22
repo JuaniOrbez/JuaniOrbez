@@ -79,13 +79,22 @@ def list_pdfs(service, folder_id):
     return files
 
 
-def download_pdf(service, file_id, destination):
+def download_pdf(service, file_id, destination, retries=3):
     request = service.files().get_media(fileId=file_id)
-    with io.FileIO(destination, "wb") as fh:
-        downloader = MediaIoBaseDownload(fh, request)
-        done = False
-        while not done:
-            _, done = downloader.next_chunk()
+    last_error = None
+    for attempt in range(1, retries + 1):
+        try:
+            with io.FileIO(destination, "wb") as fh:
+                downloader = MediaIoBaseDownload(fh, request)
+                done = False
+                while not done:
+                    _, done = downloader.next_chunk()
+            return
+        except (OSError, TimeoutError) as e:
+            last_error = e
+            if attempt < retries:
+                print(f"  (falló el intento {attempt}/{retries}: {e}, reintentando...)")
+    raise last_error
 
 
 def sanitize_filename(name):
@@ -150,12 +159,18 @@ def run_with_config(config):
     print(f"Encontrados {len(pdfs)} PDF(s) en la carpeta.")
 
     total_saved = 0
+    failed = []
     for pdf in pdfs:
         local_path = os.path.join(downloads_dir, sanitize_filename(pdf["name"]))
         print(f"Descargando: {pdf['name']}")
-        download_pdf(service, pdf["id"], local_path)
+        try:
+            download_pdf(service, pdf["id"], local_path)
+            saved = extract_matching_pages(local_path, keywords, output_dir, zoom)
+        except Exception as e:  # noqa: BLE001
+            print(f"  -> ERROR, se salteó este PDF: {e}")
+            failed.append(pdf["name"])
+            continue
 
-        saved = extract_matching_pages(local_path, keywords, output_dir, zoom)
         if saved:
             print(f"  -> {len(saved)} página(s) guardada(s):")
             for path in saved:
@@ -165,6 +180,11 @@ def run_with_config(config):
         total_saved += len(saved)
 
     print(f"\nListo. {total_saved} imagen(es) guardada(s) en '{output_dir}'.")
+    if failed:
+        print(f"\n{len(failed)} PDF(s) fallaron y se saltearon:")
+        for name in failed:
+            print(f"  - {name}")
+        print("Volvé a correr el agente para reintentarlos.")
 
 
 if __name__ == "__main__":
