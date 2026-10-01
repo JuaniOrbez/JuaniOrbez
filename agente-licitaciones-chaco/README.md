@@ -15,9 +15,14 @@ compras.chaco.gob.ar ──► scraper ──► Claude (extrae renglones) ─�
 
 ## Instalación
 
+Requiere **Python 3.10 o superior** (`python3 --version`). El Python que trae la Mac
+con las Command Line Tools es 3.9: instalá uno nuevo desde [python.org](https://www.python.org/downloads/)
+o con `brew install python@3.12`.
+
 ```bash
-cd agente-licitaciones-chaco
-python3 -m venv .venv && source .venv/bin/activate
+git clone -b claude/compassionate-volta-qo97ae https://github.com/JuaniOrbez/JuaniOrbez.git
+cd JuaniOrbez/agente-licitaciones-chaco
+python3.12 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env              # completá ANTHROPIC_API_KEY y los datos SMTP
 cp config.example.yaml config.yaml  # tus datos de empresa, rubros y límites
