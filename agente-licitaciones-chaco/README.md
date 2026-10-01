@@ -1,0 +1,71 @@
+# Agente de licitaciones – Provincia del Chaco
+
+Agente en Python que:
+
+1. **Busca licitaciones** en el portal de compras de la provincia ([compras.chaco.gob.ar](https://compras.chaco.gob.ar)), las filtra por tus rubros y descarta las que ya cerraron.
+2. **Extrae los renglones** (productos, cantidades, especificaciones) de la página y de los pliegos PDF, usando Claude para leer el texto.
+3. **Busca proveedores argentinos** con el mejor precio publicado para cada producto (Claude con búsqueda web), junto con su email de contacto.
+4. **Pide cotización por email**: arma un solo correo por proveedor y licitación con todos los productos que vende. Por defecto **sólo genera borradores** (`.eml`) para que los revises; el envío real se activa aparte.
+
+```
+compras.chaco.gob.ar ──► scraper ──► Claude (extrae renglones) ──► SQLite
+                                                                     │
+          emails (.eml / SMTP) ◄── agrupar por proveedor ◄── Claude + búsqueda web
+```
+
+## Instalación
+
+```bash
+cd agente-licitaciones-chaco
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env              # completá ANTHROPIC_API_KEY y los datos SMTP
+cp config.example.yaml config.yaml  # tus datos de empresa, rubros y límites
+```
+
+Para Gmail usá `smtp.gmail.com`, puerto `465` y una [contraseña de aplicación](https://myaccount.google.com/apppasswords) (no tu contraseña normal).
+
+## Uso
+
+```bash
+python -m agente.main buscar        # 1-2. licitaciones + renglones
+python -m agente.main proveedores   # 3. proveedores y precios
+python -m agente.main cotizar       # 4. borradores en salida/emails/*.eml
+python -m agente.main reporte       # salida/reporte.csv (se abre en Excel)
+
+python -m agente.main todo          # todo lo anterior
+python -m agente.main cotizar --enviar   # envío real por SMTP
+python -m agente.main buscar --url https://compras.chaco.gob.ar/organismos/6/licitaciones/2026/120
+```
+
+Todo queda en `datos/agente.db`, así que podés correrlo todos los días (por ejemplo con `cron`): no vuelve a analizar licitaciones ya vistas ni reenvía pedidos ya enviados.
+
+## Configuración (`config.yaml`)
+
+| Sección | Qué controla |
+|---|---|
+| `empresa` | Datos que aparecen en el email (razón social, CUIT, contacto). |
+| `portal` | Páginas de inicio, organismos a recorrer, límites y pausa entre pedidos. |
+| `filtros.rubros` | Palabras clave: sólo se analizan licitaciones que las mencionen. |
+| `filtros.solo_abiertas` | Ignorar procesos cuya apertura de sobres ya pasó. |
+| `proveedores` | Cuántos proveedores por producto, tope de productos por licitación, dominios a excluir. |
+| `email` | `enviar`, máximo de correos por corrida y pausa entre envíos. |
+
+Para que un proveedor no reciba más correos, agregá su email (uno por línea) a `datos/bajas.txt`.
+
+## Costos y límites a tener en cuenta
+
+- Cada licitación analizada usa una llamada a Claude; cada producto usa una investigación web (búsquedas + lectura de páginas), que es lo más caro. Ajustá `max_items_por_licitacion` y `max_por_item` para controlar el gasto.
+- Los precios encontrados son **precios publicados en la web**, sirven como referencia para elegir a quién pedir cotización; el precio real llega con la respuesta del proveedor.
+- El scraper no depende del diseño exacto del portal: busca los enlaces `/organismos/{id}/licitaciones/{año}/{número}` y deja que Claude interprete el contenido. Si el portal cambia la estructura de URLs, ajustá `PATRON_DETALLE` en `agente/scraper.py`.
+- Los PDFs escaneados (imágenes) no tienen texto extraíble; en ese caso el renglón puede quedar incompleto.
+- Para participar en licitaciones del Chaco necesitás estar inscripto en el Registro de Proveedores de la provincia; el agente lista los requisitos de cada pliego, pero no hace ese trámite.
+
+## Tests
+
+```bash
+pip install pytest
+python -m pytest -q tests
+```
+
+Los tests corren sin red: simulan el portal y las respuestas de Claude.

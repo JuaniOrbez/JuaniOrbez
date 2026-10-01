@@ -1,0 +1,42 @@
+# Copiá este archivo a config.yaml y ajustalo.
+
+empresa:
+  razon_social: "Mi Empresa S.R.L."
+  cuit: "30-00000000-0"
+  contacto: "Juan Ignacio Orbez"
+  email: "tu-cuenta@gmail.com"      # remitente y dirección de respuesta
+  telefono: "+54 362 400-0000"
+  ciudad: "Resistencia, Chaco"
+
+portal:
+  base_url: "https://compras.chaco.gob.ar"
+  # Páginas desde donde se recolectan enlaces a licitaciones.
+  paginas_inicio:
+    - "https://compras.chaco.gob.ar/"
+  # Además, recorrer /organismos/{id}/licitaciones para estos organismos (vacío = no).
+  organismos: []
+  max_paginas_listado: 10
+  max_licitaciones: 40
+  pausa_segundos: 1.5          # cortesía con el servidor
+
+filtros:
+  # Sólo se analizan licitaciones cuyo texto contenga alguna de estas palabras
+  # (vacío = todas). Comparación sin acentos ni mayúsculas.
+  rubros:
+    - "librería"
+    - "insumos informáticos"
+    - "artículos de limpieza"
+  solo_abiertas: true          # descartar las que ya tuvieron apertura de sobres
+
+proveedores:
+  max_por_item: 5              # proveedores a investigar por producto
+  max_items_por_licitacion: 15 # tope para controlar costo de búsquedas
+  excluir_dominios:            # nunca contactar estos dominios
+    - "gob.ar"
+    - "gov.ar"
+
+email:
+  enviar: false                # false = sólo genera borradores .eml en salida/emails
+  max_por_ejecucion: 20
+  pausa_segundos: 20
+  cc: []

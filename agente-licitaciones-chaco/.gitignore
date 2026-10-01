@@ -1,0 +1,7 @@
+.env
+config.yaml
+datos/
+salida/
+__pycache__/
+*.pyc
+.venv/
