@@ -19,6 +19,12 @@ def cargar(ruta: str | Path | None = None) -> dict:
         ruta = RAIZ / "config.example.yaml"
     with open(ruta, encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
+    for seccion in ("empresa", "portal", "filtros", "proveedores", "email"):
+        if not isinstance(cfg.get(seccion), dict):
+            raise SystemExit(
+                f"Error en {ruta.name}: la sección '{seccion}:' está mal escrita "
+                f"(se leyó {cfg.get(seccion)!r}). Revisá que las líneas de abajo de "
+                f"'{seccion}:' empiecen con 2 espacios, igual que en config.example.yaml.")
     DATOS.mkdir(exist_ok=True)
     SALIDA.mkdir(exist_ok=True)
     cfg["smtp"] = {
