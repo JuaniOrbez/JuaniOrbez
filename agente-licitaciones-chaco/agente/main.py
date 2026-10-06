@@ -23,7 +23,8 @@ from . import config, correo, db, extractor, llm, proveedores, scraper
 # --- 1. Licitaciones -------------------------------------------------------
 def cmd_buscar(cfg: dict, args) -> None:
     portal = scraper.Portal(cfg)
-    rubros = cfg["filtros"].get("rubros") or []
+    # Si se pasa una licitación puntual, ya la eligió el usuario: no se filtra por rubro.
+    rubros = [] if args.url else (cfg["filtros"].get("rubros") or [])
     print("Buscando licitaciones en", portal.base, "...")
     urls = [args.url] if args.url else portal.listar()
     print(f"  {len(urls)} licitaciones encontradas")
@@ -227,6 +228,7 @@ def main() -> None:
     p.add_argument("--config", help="ruta a config.yaml")
     sub = p.add_subparsers(dest="cmd", required=True)
     b = sub.add_parser("buscar", help="buscar licitaciones y extraer renglones")
+    b.add_argument("url_posicional", nargs="?", metavar="URL", help="analizar sólo esta licitación")
     b.add_argument("--url", help="analizar sólo esta licitación")
     sub.add_parser("proveedores", help="buscar proveedores con mejor precio")
     c = sub.add_parser("cotizar", help="generar/enviar pedidos de cotización")
@@ -237,6 +239,8 @@ def main() -> None:
     t.add_argument("--enviar", action="store_true")
     args = p.parse_args()
 
+    if getattr(args, "url_posicional", None) and not args.url:
+        args.url = args.url_posicional
     cfg = config.cargar(args.config)
     pasos = {
         "buscar": [cmd_buscar], "proveedores": [cmd_proveedores],

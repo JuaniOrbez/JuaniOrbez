@@ -75,3 +75,14 @@ def test_armar_email():
     assert "Resma A4 — Cantidad: 500 resma" in cuerpo
     assert "antes del 2026-10-15" in cuerpo
     assert "BAJA" in cuerpo
+
+
+def test_config_filtros_mal_escritos_no_frena(tmp_path):
+    from agente import config
+    texto = (config.RAIZ / "config.example.yaml").read_text(encoding="utf-8")
+    inicio, fin = texto.index("filtros:"), texto.index("proveedores:")
+    roto = texto[:inicio] + "filtros: librería\n\n" + texto[fin:]
+    ruta = tmp_path / "config.yaml"
+    ruta.write_text(roto, encoding="utf-8")
+    cfg = config.cargar(ruta)
+    assert cfg["filtros"] == {}

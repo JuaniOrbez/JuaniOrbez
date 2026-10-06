@@ -19,7 +19,12 @@ def cargar(ruta: str | Path | None = None) -> dict:
         ruta = RAIZ / "config.example.yaml"
     with open(ruta, encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
-    for seccion in ("empresa", "portal", "filtros", "proveedores", "email"):
+    if not isinstance(cfg.get("filtros"), dict):
+        if cfg.get("filtros") is not None:
+            print(f"Aviso: la sección 'filtros:' de {ruta.name} está mal escrita; "
+                  "se analiza sin filtro de rubros.")
+        cfg["filtros"] = {}
+    for seccion in ("empresa", "portal", "proveedores", "email"):
         if not isinstance(cfg.get(seccion), dict):
             raise SystemExit(
                 f"Error en {ruta.name}: la sección '{seccion}:' está mal escrita "
