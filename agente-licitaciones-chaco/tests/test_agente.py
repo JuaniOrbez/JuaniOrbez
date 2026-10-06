@@ -86,3 +86,11 @@ def test_config_filtros_mal_escritos_no_frena(tmp_path):
     ruta.write_text(roto, encoding="utf-8")
     cfg = config.cargar(ruta)
     assert cfg["filtros"] == {}
+
+
+def test_esta_abierta_considera_la_hora():
+    from datetime import datetime
+    ahora = datetime(2026, 10, 6, 11, 0)
+    assert not extractor.esta_abierta(_datos("2026-10-06T09:00"), ahora)
+    assert extractor.esta_abierta(_datos("2026-10-06T12:00"), ahora)
+    assert extractor.esta_abierta(_datos("2026-10-06"), ahora)

@@ -1,7 +1,7 @@
 """Convierte el texto de una licitación (página + pliegos) en datos estructurados."""
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel, Field
 
@@ -43,15 +43,20 @@ def analizar(lic: Licitacion) -> DatosLicitacion:
     return llm.extraer(DatosLicitacion, INSTRUCCIONES, lic.texto_para_analisis())
 
 
-def esta_abierta(datos: DatosLicitacion, hoy: date | None = None) -> bool:
-    """True si la apertura es hoy o posterior (o si no se pudo determinar)."""
+def esta_abierta(datos: DatosLicitacion, ahora: date | datetime | None = None) -> bool:
+    """True si la apertura todavía no pasó (o si no se pudo determinar)."""
     if not datos.fecha_apertura:
         return True
+    ahora = ahora or datetime.now()
+    if not isinstance(ahora, datetime):
+        ahora = datetime.combine(ahora, datetime.min.time())
     try:
-        apertura = date.fromisoformat(datos.fecha_apertura[:10])
+        apertura = datetime.fromisoformat(datos.fecha_apertura.strip()[:16])
     except ValueError:
         return True
-    return apertura >= (hoy or date.today())
+    if len(datos.fecha_apertura.strip()) <= 10:  # sólo fecha: abierta todo ese día
+        return apertura.date() >= ahora.date()
+    return apertura >= ahora
 
 
 class Relevancia(BaseModel):

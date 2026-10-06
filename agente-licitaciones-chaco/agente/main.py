@@ -207,6 +207,52 @@ class _Nulo:
         return False
 
 
+# --- Diagnóstico -----------------------------------------------------------
+def cmd_diagnostico(cfg: dict, args) -> None:
+    """Muestra qué ve el agente en una página del portal, para ajustar el scraper."""
+    from bs4 import BeautifulSoup
+    from urllib.parse import urljoin
+
+    portal = scraper.Portal(cfg)
+    resp = portal._get(args.url)
+    resp.encoding = resp.apparent_encoding or resp.encoding
+    carpeta = config.SALIDA / "diagnostico"
+    carpeta.mkdir(parents=True, exist_ok=True)
+    archivo = carpeta / (args.url.rstrip("/").rsplit("/", 1)[-1] + ".html")
+    archivo.write_text(resp.text, encoding="utf-8")
+
+    sopa = BeautifulSoup(resp.text, "html.parser")
+    print(f"HTML guardado en: {archivo} ({len(resp.text):,} caracteres)")
+    print(f"Tablas: {len(sopa.find_all('table'))}")
+    for i, t in enumerate(sopa.find_all("table"), 1):
+        filas = t.find_all("tr")
+        primera = filas[0].get_text(" | ", strip=True)[:150] if filas else ""
+        print(f"  tabla {i}: {len(filas)} filas · {primera}")
+    for tag in sopa.find_all("iframe", src=True):
+        print(f"Iframe: {urljoin(args.url, tag['src'])}")
+    for tag in sopa.find_all("script", src=True):
+        print(f"Script: {urljoin(args.url, tag['src'])}")
+    for f in sopa.find_all("form"):
+        print(f"Formulario: action={f.get('action')} method={f.get('method')}")
+    lic = scraper.parsear_detalle(BeautifulSoup(resp.text, "html.parser"), args.url)
+    print(f"Adjuntos detectados: {len(lic.adjuntos)}")
+    for a in lic.adjuntos:
+        print(f"  - {a.nombre[:60]} -> {a.url}")
+    print("Enlaces de la página:")
+    vistos = set()
+    for a in sopa.find_all("a", href=True):
+        href = urljoin(args.url, a["href"])
+        if href in vistos or href.startswith(("mailto:", "javascript:")):
+            continue
+        vistos.add(href)
+        print(f"  [{a.get_text(' ', strip=True)[:50]}] {href}")
+        if len(vistos) >= 80:
+            print("  ...")
+            break
+    texto = lic.texto
+    print(f"\nTexto visible ({len(texto):,} caracteres), primeros 1500:\n{texto[:1500]}")
+
+
 # --- Reporte ---------------------------------------------------------------
 def cmd_reporte(cfg: dict, args) -> None:
     ruta = config.SALIDA / "reporte.csv"
@@ -246,6 +292,8 @@ def main() -> None:
     c = sub.add_parser("cotizar", help="generar/enviar pedidos de cotización")
     c.add_argument("--enviar", action="store_true", help="enviar de verdad por SMTP")
     sub.add_parser("reporte", help="exportar salida/reporte.csv")
+    d = sub.add_parser("diagnostico", help="mostrar qué ve el agente en una página")
+    d.add_argument("url")
     t = sub.add_parser("todo", help="buscar + proveedores + cotizar + reporte")
     t.add_argument("--url")
     t.add_argument("--enviar", action="store_true")
@@ -257,6 +305,7 @@ def main() -> None:
     pasos = {
         "buscar": [cmd_buscar], "proveedores": [cmd_proveedores],
         "cotizar": [cmd_cotizar], "reporte": [cmd_reporte],
+        "diagnostico": [cmd_diagnostico],
         "todo": [cmd_buscar, cmd_proveedores, cmd_cotizar, cmd_reporte],
     }[args.cmd]
     for paso in pasos:
