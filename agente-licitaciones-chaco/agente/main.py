@@ -25,6 +25,7 @@ def cmd_buscar(cfg: dict, args) -> None:
     portal = scraper.Portal(cfg)
     # Si se pasa una licitación puntual, ya la eligió el usuario: no se filtra por rubro.
     rubros = [] if args.url else (cfg["filtros"].get("rubros") or [])
+    inteligente = cfg["filtros"].get("filtro_inteligente", True)
     print("Buscando licitaciones en", portal.base, "...")
     urls = [args.url] if args.url else portal.listar()
     print(f"  {len(urls)} licitaciones encontradas")
@@ -43,8 +44,19 @@ def cmd_buscar(cfg: dict, args) -> None:
                 # Puede que los renglones sólo estén en el pliego: miramos los PDFs.
                 portal.cargar_adjuntos(lic)
                 if not scraper.coincide_rubros(lic.texto_para_analisis(), rubros):
-                    print(f"  - fuera de rubro: {lic.titulo[:80]}")
-                    continue
+                    if not inteligente:
+                        print(f"  - fuera de rubro: {lic.titulo[:80]}")
+                        continue
+                    # Sin coincidencia literal: Claude evalúa sinónimos y categorías afines.
+                    try:
+                        rel = extractor.es_relevante(lic, rubros)
+                    except (llm.RechazoModelo, RuntimeError) as e:
+                        print(f"    ! no se pudo evaluar el rubro: {e}")
+                        continue
+                    if not rel.relevante:
+                        print(f"  - fuera de rubro: {lic.titulo[:80]} ({rel.motivo[:100]})")
+                        continue
+                    print(f"  + rubro afín: {rel.motivo[:120]}")
             else:
                 portal.cargar_adjuntos(lic)
 

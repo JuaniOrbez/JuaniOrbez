@@ -51,7 +51,7 @@ Todo queda en `datos/agente.db`, así que podés correrlo todos los días (por e
 |---|---|
 | `empresa` | Datos que aparecen en el email (razón social, CUIT, contacto). |
 | `portal` | Páginas de inicio, organismos a recorrer, límites y pausa entre pedidos. |
-| `filtros.rubros` | Palabras clave: sólo se analizan licitaciones que las mencionen. |
+| `filtros.rubros` | Lo que vendés. Si la licitación no menciona la palabra exacta, Claude decide si es del rubro (ej. "artículos de oficina" cuenta como librería). Con `filtro_inteligente: false` sólo se usa la palabra exacta. No se aplica cuando pasás el link de una licitación puntual. |
 | `filtros.solo_abiertas` | Ignorar procesos cuya apertura de sobres ya pasó. |
 | `proveedores` | Cuántos proveedores por producto, tope de productos por licitación, dominios a excluir. |
 | `email` | `enviar`, máximo de correos por corrida y pausa entre envíos. |

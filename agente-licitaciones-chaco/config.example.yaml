@@ -23,9 +23,13 @@ filtros:
   # Sólo se analizan licitaciones cuyo texto contenga alguna de estas palabras
   # (vacío = todas). Comparación sin acentos ni mayúsculas.
   rubros:
-    - "librería"
-    - "insumos informáticos"
-    - "artículos de limpieza"
+    - librería
+    - insumos informáticos
+    - artículos de limpieza
+  # Si el texto no contiene la palabra exacta, Claude decide si la licitación
+  # es del rubro (sinónimos: "artículos de oficina" -> librería). Cuesta una
+  # consulta corta por licitación; con false sólo se usa la palabra exacta.
+  filtro_inteligente: true
   solo_abiertas: true          # descartar las que ya tuvieron apertura de sobres
 
 proveedores:

@@ -52,3 +52,24 @@ def esta_abierta(datos: DatosLicitacion, hoy: date | None = None) -> bool:
     except ValueError:
         return True
     return apertura >= (hoy or date.today())
+
+
+class Relevancia(BaseModel):
+    relevante: bool = Field(description="true si al menos parte de lo que se compra corresponde a los rubros")
+    motivo: str = Field(description="Explicación breve, mencionando los productos que coinciden")
+
+
+INSTRUCCIONES_RELEVANCIA = """Sos un asistente de una empresa proveedora del Estado en Chaco, Argentina.
+Decidí si en la licitación se compran productos que la empresa vende según sus rubros.
+Considerá sinónimos, categorías equivalentes y productos incluidos en el rubro
+(ej: "librería" incluye artículos de oficina, papelería, útiles escolares, resmas, biromes).
+Alcanza con que algunos renglones coincidan. Si es obra pública o un servicio sin
+provisión de esos productos, no es relevante."""
+
+MAX_CHARS_RELEVANCIA = 15_000
+
+
+def es_relevante(lic: Licitacion, rubros: list[str]) -> Relevancia:
+    contenido = (f"Rubros de la empresa: {', '.join(rubros)}\n\n"
+                 f"LICITACIÓN:\n{lic.texto_para_analisis()[:MAX_CHARS_RELEVANCIA]}")
+    return llm.extraer(Relevancia, INSTRUCCIONES_RELEVANCIA, contenido)
