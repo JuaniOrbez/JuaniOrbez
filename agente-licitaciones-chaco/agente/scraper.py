@@ -8,7 +8,10 @@ La interpretación (renglones, fechas, etc.) la hace luego `extractor.py`.
 """
 from __future__ import annotations
 
+import ast
+import base64
 import io
+import json
 import re
 import time
 import unicodedata
@@ -33,6 +36,8 @@ class Adjunto:
     url: str
     nombre: str
     texto: str = ""
+    # Archivos que el portal entrega con un botón Livewire (wire:click="downloadFile(...)")
+    livewire: dict | None = None
 
 
 @dataclass
@@ -69,16 +74,19 @@ class Portal:
         self._ultimo = 0.0
 
     # --- HTTP -------------------------------------------------------------
-    def _get(self, url: str, **kw) -> requests.Response:
+    def _pedir(self, metodo: str, url: str, **kw) -> requests.Response:
         espera = self.cfg.get("pausa_segundos", 1.5) - (time.monotonic() - self._ultimo)
         if espera > 0:
             time.sleep(espera)
         try:
-            resp = self.sesion.get(url, timeout=40, **kw)
+            resp = self.sesion.request(metodo, url, timeout=60, **kw)
         finally:
             self._ultimo = time.monotonic()
         resp.raise_for_status()
         return resp
+
+    def _get(self, url: str, **kw) -> requests.Response:
+        return self._pedir("GET", url, **kw)
 
     def _sopa(self, url: str) -> BeautifulSoup:
         resp = self._get(url)
@@ -126,23 +134,62 @@ class Portal:
 
     def cargar_adjuntos(self, lic: Licitacion) -> Licitacion:
         for adj in lic.adjuntos:
-            if not adj.texto:
-                adj.texto = self._texto_adjunto(adj.url)
+            if adj.texto:
+                continue
+            datos = self.descargar(adj, lic.url)
+            if datos is None:
+                continue
+            guardar_adjunto(lic.url, adj.nombre, datos)
+            adj.texto = texto_archivo(datos)
         return lic
 
-    def _texto_adjunto(self, url: str) -> str:
-        if not urlparse(url).path.lower().endswith(".pdf"):
-            return ""
+    def descargar(self, adj: Adjunto, pagina: str) -> bytes | None:
         try:
-            resp = self._get(url, stream=True)
+            if adj.livewire:
+                return self._descargar_livewire(adj.livewire, pagina)
+            if not urlparse(adj.url).path.lower().endswith(EXT_ADJUNTOS):
+                return None
+            resp = self._get(adj.url, stream=True)
             datos = resp.raw.read(MAX_BYTES_ADJUNTO + 1, decode_content=True)
-        except requests.RequestException as e:
-            print(f"  ! no se pudo descargar {url}: {e}")
-            return ""
+        except (requests.RequestException, ValueError, KeyError) as e:
+            print(f"  ! no se pudo descargar '{adj.nombre}': {e}")
+            return None
         if len(datos) > MAX_BYTES_ADJUNTO:
-            print(f"  ! adjunto demasiado grande, se omite: {url}")
-            return ""
-        return texto_pdf(datos)
+            print(f"  ! adjunto demasiado grande, se omite: {adj.nombre}")
+            return None
+        return datos
+
+    def _descargar_livewire(self, lw: dict, pagina: str) -> bytes | None:
+        """Ejecuta la acción del botón como lo haría el navegador y devuelve el archivo."""
+        cabeceras = {"X-Livewire": "true", "Accept": "application/json",
+                     "Content-Type": "application/json", "Referer": pagina,
+                     "X-Requested-With": "XMLHttpRequest"}
+        if lw.get("csrf"):
+            cabeceras["X-CSRF-TOKEN"] = lw["csrf"]
+        if lw["version"] == 3:
+            cuerpo = {"_token": lw.get("csrf", ""), "components": [{
+                "snapshot": lw["snapshot"], "updates": {},
+                "calls": [{"path": "", "method": lw["metodo"], "params": lw["params"]}]}]}
+            destino = urljoin(pagina, lw.get("endpoint") or "/livewire/update")
+            resp = self._pedir("POST", destino, data=json.dumps(cuerpo), headers=cabeceras)
+            efectos = resp.json()["components"][0].get("effects", {})
+        elif lw["version"] == 2:
+            inicial = lw["inicial"]
+            cuerpo = {"fingerprint": inicial["fingerprint"], "serverMemo": inicial["serverMemo"],
+                      "updates": [{"type": "callMethod", "payload": {
+                          "id": "dl", "method": lw["metodo"], "params": lw["params"]}}]}
+            destino = urljoin(pagina, f"/livewire/message/{inicial['fingerprint']['name']}")
+            resp = self._pedir("POST", destino, data=json.dumps(cuerpo), headers=cabeceras)
+            efectos = resp.json().get("effects", {})
+        else:
+            raise ValueError("no se encontró el componente Livewire del botón")
+
+        if efectos.get("download"):
+            return base64.b64decode(efectos["download"]["content"])
+        if efectos.get("redirect"):
+            resp = self._get(urljoin(pagina, efectos["redirect"]), stream=True)
+            return resp.raw.read(MAX_BYTES_ADJUNTO + 1, decode_content=True)
+        raise ValueError(f"el portal no devolvió un archivo (efectos: {sorted(efectos)})")
 
 
 def extraer_enlaces(sopa: BeautifulSoup, url_base: str, host: str
@@ -163,7 +210,56 @@ def extraer_enlaces(sopa: BeautifulSoup, url_base: str, host: str
     return detalles, siguientes
 
 
+PATRON_LLAMADO = re.compile(r"\s*([\w.]+)\((.*)\)\s*$", re.S)
+PATRON_TITULO = re.compile(
+    r"((?:Licitaci[oó]n|Concurso|Contrataci[oó]n|Compra)[^\n]{0,60}?N[°ºo]\.?\s*[\d/.-]+)",
+    re.IGNORECASE)
+
+
+def _datos_livewire(sopa: BeautifulSoup) -> dict:
+    """Token CSRF y endpoint que usa el portal para las acciones de Livewire."""
+    datos: dict = {}
+    meta = sopa.find("meta", attrs={"name": "csrf-token"})
+    if meta and meta.get("content"):
+        datos["csrf"] = meta["content"]
+    for script in sopa.find_all("script"):
+        if script.get("data-csrf"):
+            datos["csrf"] = script["data-csrf"]
+        if script.get("data-update-uri"):
+            datos["endpoint"] = script["data-update-uri"]
+        m = re.search(r"livewire_token\s*=\s*['\"]([^'\"]+)", script.string or "")
+        if m:
+            datos.setdefault("csrf", m.group(1))
+    return datos
+
+
+def adjuntos_livewire(sopa: BeautifulSoup, url: str) -> list[Adjunto]:
+    contexto = _datos_livewire(sopa)
+    adjuntos = []
+    for i, boton in enumerate(sopa.find_all(attrs={"wire:click": True})):
+        m = PATRON_LLAMADO.match(boton["wire:click"])
+        if not m or "download" not in m.group(1).lower():
+            continue
+        try:
+            params = list(ast.literal_eval(f"({m.group(2)},)")) if m.group(2).strip() else []
+        except (ValueError, SyntaxError):
+            continue
+        lw = {"metodo": m.group(1), "params": params, **contexto, "version": None}
+        comp = boton.find_parent(
+            lambda t: t.has_attr("wire:snapshot") or t.has_attr("wire:initial-data"))
+        if comp is not None and comp.has_attr("wire:snapshot"):
+            lw.update(version=3, snapshot=comp["wire:snapshot"])
+        elif comp is not None:
+            lw.update(version=2, inicial=json.loads(comp["wire:initial-data"]))
+        fila = boton.find_parent("li") or boton.parent
+        nombre = fila.get_text(" ", strip=True) if fila else ""
+        nombre = nombre or next((p for p in params if isinstance(p, str)), f"archivo {i}")
+        adjuntos.append(Adjunto(url=f"{url}#archivo-{i}", nombre=nombre, livewire=lw))
+    return adjuntos
+
+
 def parsear_detalle(sopa: BeautifulSoup, url: str) -> Licitacion:
+    adjuntos_lw = adjuntos_livewire(sopa, url)  # antes de quitar los <script>
     for basura in sopa(["script", "style", "noscript", "nav", "footer", "header"]):
         basura.decompose()
     titulo = ""
@@ -193,9 +289,53 @@ def parsear_detalle(sopa: BeautifulSoup, url: str) -> Licitacion:
             vistos.add(abs_url)
             adjuntos.append(Adjunto(url=abs_url, nombre=etiqueta or ruta.rsplit("/", 1)[-1]))
 
+    adjuntos.extend(adjuntos_lw)
+
     principal = sopa.find("main") or sopa.body or sopa
     texto = re.sub(r"\n\s*\n+", "\n\n", principal.get_text("\n", strip=True))
+    m = PATRON_TITULO.search(texto)
+    if m:  # el <h1> del portal es el nombre del sitio; preferimos "Concurso de Precios N° ..."
+        titulo = re.sub(r"\s+", " ", m.group(1))
     return Licitacion(url=url, titulo=titulo, texto=texto, tablas=tablas, adjuntos=adjuntos)
+
+
+def guardar_adjunto(url_licitacion: str, nombre: str, datos: bytes) -> str:
+    from .config import SALIDA
+
+    carpeta = SALIDA / "adjuntos" / re.sub(r"[^\w-]+", "_", urlparse(url_licitacion).path.strip("/"))
+    carpeta.mkdir(parents=True, exist_ok=True)
+    ext = ".pdf" if datos[:4] == b"%PDF" else ".xlsx" if datos[:2] == b"PK" else ".bin"
+    ruta = carpeta / (re.sub(r"[^\w-]+", "_", nombre).strip("_")[:80] + ext)
+    ruta.write_bytes(datos)
+    return str(ruta)
+
+
+def texto_archivo(datos: bytes) -> str:
+    if datos[:4] == b"%PDF":
+        return texto_pdf(datos)
+    if datos[:2] == b"PK":
+        return texto_xlsx(datos)
+    try:
+        return datos.decode("utf-8")[:MAX_CHARS_TEXTO]
+    except UnicodeDecodeError:
+        return "[formato de archivo no soportado]"
+
+
+def texto_xlsx(datos: bytes) -> str:
+    try:
+        import openpyxl
+    except ImportError:
+        return "[planilla Excel: instalar openpyxl para leerla]"
+    try:
+        libro = openpyxl.load_workbook(io.BytesIO(datos), read_only=True, data_only=True)
+    except Exception as e:  # no es xlsx (p. ej. docx)
+        return f"[no se pudo leer el archivo: {e}]"
+    filas = []
+    for hoja in libro.worksheets:
+        for fila in hoja.iter_rows(values_only=True):
+            if any(c is not None for c in fila):
+                filas.append(" | ".join("" if c is None else str(c) for c in fila))
+    return "\n".join(filas)[:MAX_CHARS_TEXTO]
 
 
 def texto_pdf(datos: bytes, max_paginas: int = 40) -> str:

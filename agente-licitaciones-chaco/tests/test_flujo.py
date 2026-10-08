@@ -30,7 +30,7 @@ def test_flujo_completo(tmp_path, monkeypatch):
         return RespFalsa((FIX / nombre).read_text("utf-8") if nombre else "<html></html>")
 
     monkeypatch.setattr(scraper.Portal, "_get", get_falso)
-    monkeypatch.setattr(scraper.Portal, "_texto_adjunto", lambda self, url: "Pliego: resmas y biromes")
+    monkeypatch.setattr(scraper.Portal, "descargar", lambda self, adj, pagina: b"Pliego: resmas y biromes")
 
     def analizar_falso(lic):
         return extractor.DatosLicitacion(

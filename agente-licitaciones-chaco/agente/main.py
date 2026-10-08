@@ -33,8 +33,9 @@ def cmd_buscar(cfg: dict, args) -> None:
 
     with db.conexion() as con:
         for url in urls:
-            if con.execute("SELECT analizada FROM licitaciones WHERE url=? AND analizada=1",
-                           (url,)).fetchone():
+            # Las ya analizadas se saltean, salvo que se pida una licitación puntual.
+            if not args.url and con.execute(
+                    "SELECT 1 FROM licitaciones WHERE url=? AND analizada=1", (url,)).fetchone():
                 continue
             try:
                 lic = portal.detalle(url, leer_adjuntos=False)
@@ -295,6 +296,14 @@ def cmd_diagnostico(cfg: dict, args) -> None:
         if len(vistos) >= 80:
             print("  ...")
             break
+    for adj in lic.adjuntos:
+        datos = portal.descargar(adj, args.url)
+        if datos is None:
+            continue
+        ruta = scraper.guardar_adjunto(args.url, adj.nombre, datos)
+        texto_adj = scraper.texto_archivo(datos)
+        print(f"\nDescargado '{adj.nombre}' ({len(datos):,} bytes) -> {ruta}")
+        print(f"  primeros 800 caracteres:\n{texto_adj[:800]}")
     texto = lic.texto
     print(f"\nTexto visible ({len(texto):,} caracteres), primeros 1500:\n{texto[:1500]}")
 
