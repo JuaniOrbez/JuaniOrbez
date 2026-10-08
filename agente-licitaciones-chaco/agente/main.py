@@ -14,10 +14,11 @@ import csv
 import json
 import time
 from collections import defaultdict
+from pathlib import Path
 
 import requests
 
-from . import config, correo, db, extractor, llm, proveedores, scraper
+from . import config, correo, db, extractor, llm, planilla, proveedores, respuestas, scraper
 
 
 # --- 1. Licitaciones -------------------------------------------------------
@@ -207,6 +208,51 @@ class _Nulo:
         return False
 
 
+# --- Respuestas y planilla -------------------------------------------------
+def cmd_respuestas(cfg: dict, args) -> None:
+    """Marca qué proveedores contestaron, leyendo la bandeja de entrada por IMAP."""
+    if not cfg["imap"]["user"]:
+        print("Respuestas: falta configurar SMTP_USER / SMTP_PASSWORD en .env; se omite.")
+        return
+    with db.conexion() as con:
+        pendientes = con.execute(
+            """SELECT id, email, fecha FROM emails
+               WHERE estado='enviado' AND respuesta_fecha IS NULL""").fetchall()
+        print(f"Revisando respuestas de {len(pendientes)} proveedores...")
+        if not pendientes:
+            return
+        nuevas_bajas = []
+        with respuestas.Casilla(cfg["imap"]) as casilla:
+            for p in pendientes:
+                r = casilla.buscar_respuesta(p["email"], p["fecha"])
+                if not r:
+                    continue
+                con.execute("UPDATE emails SET respuesta_fecha=?, respuesta_asunto=?, baja=? "
+                            "WHERE id=?", (r["fecha"] or "sí", r["asunto"], int(r["baja"]), p["id"]))
+                print(f"  ✓ {p['email']} respondió ({r['fecha']}): {r['asunto'][:60]}"
+                      + ("  [pidió BAJA]" if r["baja"] else ""))
+                if r["baja"]:
+                    nuevas_bajas.append(p["email"])
+        if nuevas_bajas:
+            ruta = config.DATOS / "bajas.txt"
+            with open(ruta, "a", encoding="utf-8") as f:
+                f.write("".join(e + "\n" for e in nuevas_bajas))
+
+
+def cmd_planilla(cfg: dict, args) -> None:
+    """Actualiza la planilla de proveedores en Google Sheets."""
+    g = cfg["google"]
+    if not g["sheet_id"]:
+        print("Planilla: falta GOOGLE_SHEET_ID en .env; se omite.")
+        return
+    if not Path(g["credenciales"]).exists():
+        print(f"Planilla: no encuentro el archivo de credenciales {g['credenciales']}; se omite.")
+        return
+    with db.conexion() as con:
+        url = planilla.sincronizar(con, g["credenciales"], g["sheet_id"])
+    print("Planilla actualizada:", url)
+
+
 # --- Diagnóstico -----------------------------------------------------------
 def cmd_diagnostico(cfg: dict, args) -> None:
     """Muestra qué ve el agente en una página del portal, para ajustar el scraper."""
@@ -292,6 +338,8 @@ def main() -> None:
     c = sub.add_parser("cotizar", help="generar/enviar pedidos de cotización")
     c.add_argument("--enviar", action="store_true", help="enviar de verdad por SMTP")
     sub.add_parser("reporte", help="exportar salida/reporte.csv")
+    sub.add_parser("respuestas", help="marcar qué proveedores contestaron (lee el correo)")
+    sub.add_parser("planilla", help="actualizar la planilla de proveedores en Google Sheets")
     d = sub.add_parser("diagnostico", help="mostrar qué ve el agente en una página")
     d.add_argument("url")
     t = sub.add_parser("todo", help="buscar + proveedores + cotizar + reporte")
@@ -306,7 +354,9 @@ def main() -> None:
         "buscar": [cmd_buscar], "proveedores": [cmd_proveedores],
         "cotizar": [cmd_cotizar], "reporte": [cmd_reporte],
         "diagnostico": [cmd_diagnostico],
-        "todo": [cmd_buscar, cmd_proveedores, cmd_cotizar, cmd_reporte],
+        "respuestas": [cmd_respuestas], "planilla": [cmd_planilla],
+        "todo": [cmd_buscar, cmd_proveedores, cmd_cotizar, cmd_respuestas,
+                 cmd_planilla, cmd_reporte],
     }[args.cmd]
     for paso in pasos:
         paso(cfg, args)

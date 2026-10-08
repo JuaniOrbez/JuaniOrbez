@@ -5,3 +5,4 @@ salida/
 __pycache__/
 *.pyc
 .venv/
+credenciales-google.json

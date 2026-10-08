@@ -47,11 +47,26 @@ def conexion(ruta=None):
     con = sqlite3.connect(ruta or DATOS / "agente.db")
     con.row_factory = sqlite3.Row
     con.executescript(ESQUEMA)
+    _migrar(con)
     try:
         yield con
         con.commit()
     finally:
         con.close()
+
+
+COLUMNAS_NUEVAS = {
+    "emails": {"respuesta_fecha": "TEXT", "respuesta_asunto": "TEXT", "baja": "INTEGER DEFAULT 0"},
+}
+
+
+def _migrar(con: sqlite3.Connection) -> None:
+    """Agrega columnas nuevas a bases creadas con versiones anteriores."""
+    for tabla, columnas in COLUMNAS_NUEVAS.items():
+        existentes = {r[1] for r in con.execute(f"PRAGMA table_info({tabla})")}
+        for nombre, tipo in columnas.items():
+            if nombre not in existentes:
+                con.execute(f"ALTER TABLE {tabla} ADD COLUMN {nombre} {tipo}")
 
 
 def a_json(valor) -> str:

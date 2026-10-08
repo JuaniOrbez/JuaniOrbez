@@ -39,4 +39,15 @@ def cargar(ruta: str | Path | None = None) -> dict:
         "user": os.getenv("SMTP_USER", ""),
         "password": os.getenv("SMTP_PASSWORD", ""),
     }
+    cfg["imap"] = {
+        "host": os.getenv("IMAP_HOST", "imap.gmail.com"),
+        "port": int(os.getenv("IMAP_PORT", "993")),
+        "user": os.getenv("IMAP_USER") or cfg["smtp"]["user"],
+        "password": os.getenv("IMAP_PASSWORD") or cfg["smtp"]["password"],
+    }
+    credenciales = os.getenv("GOOGLE_CREDENTIALS", "credenciales-google.json")
+    cfg["google"] = {
+        "sheet_id": os.getenv("GOOGLE_SHEET_ID", ""),
+        "credenciales": str(credenciales if Path(credenciales).is_absolute() else RAIZ / credenciales),
+    }
     return cfg

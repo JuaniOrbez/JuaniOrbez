@@ -36,6 +36,8 @@ Para Gmail usá `smtp.gmail.com`, puerto `465` y una [contraseña de aplicación
 python -m agente.main buscar        # 1-2. licitaciones + renglones
 python -m agente.main proveedores   # 3. proveedores y precios
 python -m agente.main cotizar       # 4. borradores en salida/emails/*.eml
+python -m agente.main respuestas    # marca quién contestó (lee tu Gmail)
+python -m agente.main planilla      # actualiza la planilla de proveedores en Drive
 python -m agente.main reporte       # salida/reporte.csv (se abre en Excel)
 
 python -m agente.main todo          # todo lo anterior
@@ -44,6 +46,35 @@ python -m agente.main buscar --url https://compras.chaco.gob.ar/organismos/6/lic
 ```
 
 Todo queda en `datos/agente.db`, así que podés correrlo todos los días (por ejemplo con `cron`): no vuelve a analizar licitaciones ya vistas ni reenvía pedidos ya enviados.
+
+## Planilla de proveedores en Google Drive
+
+`python -m agente.main planilla` crea o actualiza una planilla de Google Sheets con dos hojas:
+
+- **Proveedores**: una fila por proveedor, con los productos que vende, teléfono, email, sitio web,
+  licitaciones, si se le envió el pedido, si respondió y si pidió la baja. La lista crece en cada
+  corrida y no se borran los proveedores anteriores. Las columnas **Notas** y **Estado comercial**
+  son para que escribas a mano: el agente las respeta.
+- **Productos**: cada producto ofrecido con su precio, link y licitación.
+
+`python -m agente.main respuestas` revisa la bandeja de entrada (IMAP, con la misma cuenta y
+contraseña de aplicación del SMTP) y marca quién contestó. Si en la respuesta aparece la palabra
+BAJA, agrega el email a `datos/bajas.txt`. Para que Gmail permita esto, IMAP tiene que estar
+activado (Gmail → Configuración → Reenvío y correo POP/IMAP).
+
+Configuración (una sola vez):
+
+1. En [console.cloud.google.com](https://console.cloud.google.com) creá un proyecto y activá la
+   **Google Sheets API** (APIs y servicios → Biblioteca).
+2. APIs y servicios → Credenciales → Crear credenciales → **Cuenta de servicio**. Dentro de la
+   cuenta creada: Claves → Agregar clave → JSON. Guardá el archivo descargado en la carpeta del
+   agente como `credenciales-google.json` (no se sube a GitHub).
+3. Creá una planilla vacía en Google Drive y **compartila como Editor** con el email de la cuenta
+   de servicio (termina en `iam.gserviceaccount.com`, figura dentro del JSON como `client_email`).
+4. Copiá el ID de la planilla (lo que está entre `/d/` y `/edit` en su link) en `.env`:
+   `GOOGLE_SHEET_ID=...`
+
+`python -m agente.main todo` actualiza la planilla y las respuestas automáticamente al final.
 
 ## Configuración (`config.yaml`)
 

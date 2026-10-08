@@ -5,3 +5,5 @@ pdfplumber>=0.11
 pydantic>=2.6
 pyyaml>=6.0
 python-dotenv>=1.0
+gspread>=6.0
+google-auth>=2.0
