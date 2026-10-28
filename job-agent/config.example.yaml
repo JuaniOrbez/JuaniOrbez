@@ -26,3 +26,17 @@ cv:
 
 llm:
   model: claude-opus-5-5
+
+# ---- Lo usa el agente de Claude Code (/postular) ----
+canva:
+  carpeta: "CVs"               # carpeta de Canva donde están tus CVs
+  cv_base: "CV Base"           # nombre del diseño que se usa como modelo
+  # Nombre de cada copia adaptada. Variables: {empresa} {puesto} {fecha}
+  nombre_copia: "CV - {empresa} - {puesto} - {fecha}"
+
+postulacion:
+  carpeta_local_cvs: "cvs"     # adónde se bajan los PDF (relativo a job-agent/)
+  # false = el agente completa todo y te pide confirmación antes de "Enviar".
+  # true  = envía solo si TODAS las respuestas salieron de tu CV o de perfil/respuestas.yaml.
+  envio_automatico: false
+  max_postulaciones_por_dia: 15

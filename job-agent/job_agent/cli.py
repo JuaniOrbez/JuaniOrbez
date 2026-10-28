@@ -7,6 +7,8 @@
   python -m job_agent list [--state X]     muestra el registro de ofertas
   python -m job_agent applied <id>         marca una oferta como postulada
   python -m job_agent status <id> <estado> cambia el estado (entrevista, rechazada, oferta...)
+  python -m job_agent show <url|id>        muestra la descripción completa de una oferta
+  python -m job_agent log <url|id> ...     registra una postulación hecha (lo usa el skill /postular)
 """
 
 from __future__ import annotations
@@ -14,6 +16,7 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+from datetime import date
 from pathlib import Path
 
 import yaml
@@ -165,10 +168,7 @@ def cmd_tailor(args, cfg, tracker):
     else:
         if not args.target:
             sys.exit("Indicá una URL o id de LinkedIn, o --file con la descripción.")
-        job_id = linkedin.job_id_from_url(args.target) or args.target
-        cached = tracker.data.get(job_id, {}).get("job")
-        job = JobPosting(**cached) if cached else JobPosting(
-            job_id=job_id, title="", company="", url=linkedin.VIEW_URL.format(job_id=job_id))
+        job = _job_from_target(args.target, tracker)
         if not job.description:
             with linkedin.make_client() as http:
                 linkedin.fetch_description(http, job)
@@ -191,6 +191,41 @@ def cmd_status(args, cfg, tracker):
     tracker.set_state(args.job_id, args.state)
     tracker.save()
     print(f"{args.job_id} -> {args.state}")
+
+
+def _job_from_target(target: str, tracker: Tracker) -> JobPosting:
+    job_id = linkedin.job_id_from_url(target) or target
+    cached = tracker.data.get(job_id, {}).get("job")
+    if cached:
+        return JobPosting(**cached)
+    return JobPosting(job_id=job_id, title="", company="", url=linkedin.VIEW_URL.format(job_id=job_id))
+
+
+def _applied_today(tracker: Tracker) -> int:
+    return sum(1 for e in tracker.data.values() if e.get("applied") == date.today().isoformat())
+
+
+def cmd_show(args, cfg, tracker):
+    job = _job_from_target(args.target, tracker)
+    if not job.description:
+        with linkedin.make_client() as http:
+            linkedin.fetch_description(http, job)
+        tracker.upsert(job.job_id, job=job.model_dump())
+        tracker.save()
+    print(f"id: {job.job_id}\npuesto: {job.title}\nempresa: {job.company}\n"
+          f"ubicación: {job.location}\nurl: {job.url}\n"
+          f"estado: {tracker.data[job.job_id]['state'] if job.job_id in tracker.data else 'sin registrar'}\n"
+          f"postulaciones hoy: {_applied_today(tracker)}\n\n{job.description}")
+
+
+def cmd_log(args, cfg, tracker):
+    job = _job_from_target(args.target, tracker)
+    job.title = args.title or job.title
+    job.company = args.company or job.company
+    tracker.upsert(job.job_id, job=job.model_dump(), state=args.state, cv=args.cv_file,
+                   canva_design=args.canva, applied=date.today().isoformat() if args.state == "postulada" else None)
+    tracker.save()
+    print(f"{job.job_id} -> {args.state}. Postulaciones hoy: {_applied_today(tracker)}")
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -218,6 +253,18 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("job_id")
     p.add_argument("state", choices=STATES)
     p.set_defaults(func=cmd_status)
+
+    p = sub.add_parser("show")
+    p.add_argument("target")
+    p.set_defaults(func=cmd_show)
+    p = sub.add_parser("log")
+    p.add_argument("target")
+    p.add_argument("--title")
+    p.add_argument("--company")
+    p.add_argument("--state", choices=STATES, default="postulada")
+    p.add_argument("--cv-file")
+    p.add_argument("--canva", help="link del diseño adaptado en Canva")
+    p.set_defaults(func=cmd_log)
 
     args = parser.parse_args(argv)
     cfg = load_config(args.config)

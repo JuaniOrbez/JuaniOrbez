@@ -4,3 +4,8 @@ output/
 *.pyc
 __pycache__/
 .env
+cvs/
+postulaciones/
+perfil/respuestas.yaml
+.browser-profile/
+.playwright-mcp/

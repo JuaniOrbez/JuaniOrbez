@@ -1,0 +1,49 @@
+# Respuestas para las preguntas adicionales de las postulaciones.
+# Copialo a perfil/respuestas.yaml. El agente lo lee en cada postulación.
+# Cuando aparece una pregunta que no está acá ni en tu CV, el agente te la hace a vos
+# y agrega la respuesta a este archivo, así no te la vuelve a preguntar.
+
+datos:
+  telefono: "+54 9 11 0000-0000"
+  email: tu-email@ejemplo.com
+  ciudad: Buenos Aires, Argentina
+  linkedin: https://www.linkedin.com/in/tu-perfil
+  portfolio: https://github.com/JuaniOrbez
+
+disponibilidad:
+  preaviso: "2 semanas"
+  inicio: "Inmediato"
+  modalidad_preferida: "Remoto o híbrido"
+  reubicacion: "No"
+  viajar: "Ocasionalmente"
+
+legal:
+  autorizacion_trabajo_argentina: "Sí"
+  requiere_visa_sponsorship: "Sí, para trabajar fuera de Argentina"
+  ciudadania: "Argentina"
+
+pretension_salarial:
+  # Si está vacío, el agente te pregunta en cada caso (recomendado).
+  ars_bruto_mensual: ""
+  usd_mensual: ""
+  respuesta_si_es_texto: "Abierto a conversar según el paquete total"
+
+# Años de experiencia que vos considerás correctos. Si falta una tecnología,
+# el agente la calcula a partir de las fechas de tu CV y te muestra la cuenta.
+anios_experiencia:
+  HTML: 3
+  CSS: 3
+  JavaScript: 3
+  PHP: 2
+  MySQL: 2
+
+idiomas:
+  ingles: "Intermedio (B1)"
+
+# Preguntas demográficas opcionales (género, etnia, discapacidad, etc.).
+preguntas_demograficas: "Prefiero no responder"
+
+# Preguntas libres que ya respondiste. El agente agrega acá las nuevas.
+otras:
+  - pregunta: "¿Por qué te interesa este puesto?"
+    respuesta: "(el agente la escribe para cada oferta, a partir de tu CV y la descripción)"
