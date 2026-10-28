@@ -1,0 +1,64 @@
+# CV MAESTRO — tu fuente de verdad.
+# Poné TODO lo que hiciste (aunque no entre en un CV de una página).
+# El agente elige, reordena y reescribe a partir de esto, pero NUNCA inventa:
+# cada viñeta del CV adaptado tiene que apuntar a un "id" de acá.
+# Copialo a data/cv_master.yaml y completalo.
+
+name: Juan Ignacio Orbez
+headline: Desarrollador Web Full Stack
+contact:
+  email: tu-email@ejemplo.com
+  phone: "+54 9 11 0000-0000"
+  location: Buenos Aires, Argentina
+  linkedin: https://www.linkedin.com/in/tu-perfil
+  github: https://github.com/JuaniOrbez
+  portfolio: ""
+
+summary: >
+  Desarrollador web con experiencia en HTML, CSS, JavaScript y PHP.
+  (Escribí un resumen largo y honesto; el agente lo recorta según la oferta.)
+
+experience:
+  - id: exp1
+    company: Empresa Ejemplo
+    role: Desarrollador Web
+    location: Remoto
+    start: 2023-03
+    end: presente
+    bullets:
+      - id: exp1-b1
+        text: Desarrollé y mantuve un sitio institucional en PHP y MySQL con ~5.000 visitas mensuales.
+      - id: exp1-b2
+        text: Maqueté interfaces responsive con HTML5, CSS3 y JavaScript a partir de diseños en Figma.
+      - id: exp1-b3
+        text: Reduje el tiempo de carga de la home un 40% optimizando imágenes y consultas SQL.
+
+projects:
+  - id: proj1
+    name: Proyecto personal
+    url: https://github.com/JuaniOrbez
+    bullets:
+      - id: proj1-b1
+        text: Aplicación de tareas con PHP (MVC), autenticación y API REST consumida desde JavaScript.
+
+education:
+  - id: edu1
+    institution: Universidad / Instituto
+    degree: Tecnicatura en Programación
+    start: 2020
+    end: 2023
+
+skills:
+  - HTML
+  - CSS
+  - JavaScript
+  - PHP
+  - MySQL
+  - Git
+  - Responsive Design
+
+languages:
+  - Español (nativo)
+  - Inglés (intermedio)
+
+certifications: []
