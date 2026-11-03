@@ -26,9 +26,8 @@ Las reglas de `CLAUDE.md` valen en todos los pasos. La principal es que no se in
 
 ## 2. CV adaptado en Canva
 
-1. Buscá en Canva la carpeta `canva.carpeta` y, adentro, el diseño `canva.cv_base`. Si hay
-   varios parecidos (por ejemplo "CV Base ES" y "CV Base EN"), usá el del idioma de la oferta o
-   preguntale.
+1. Buscá en Canva la carpeta `canva.carpeta` y, adentro, el diseño base del idioma de la oferta
+   (`canva.cv_base.es` o `canva.cv_base.en`). Si la oferta está en otro idioma, usá el de inglés.
 2. Leé todo el contenido de texto del diseño base. Junto con `data/cv_master.yaml`, esa es la
    única fuente de hechos.
 3. **Hacé una copia** del diseño base y nombrala según `canva.nombre_copia` (la fecha va como
@@ -40,6 +39,11 @@ Las reglas de `CLAUDE.md` valen en todos los pasos. La principal es que no se in
    - Resumen o perfil reescrito para esta oferta, con sus keywords cubiertas.
    - En cada experiencia, las viñetas más relevantes primero, con el vocabulario de la oferta.
    - Habilidades ordenadas por relevancia, solo las que ya tiene.
+   - **Contacto según el mercado:** si la oferta es de España (o de la UE), usá
+     `contact_variants.espana` de `data/cv_master.yaml`. Si es de Argentina, usá
+     `contact_variants.argentina`. Si es remota desde otro país, preguntale. Usá también el
+     teléfono y la ciudad que correspondan en el formulario de LinkedIn (`telefono_espana`,
+     `ciudad_espana` en `perfil/respuestas.yaml`).
    - Mantené la longitud de cada texto parecida a la original (±15%) para que el diseño no se
      desborde. No agregues ni borres cuadros de texto salvo que haga falta, y nunca cambies
      fechas, empresas, cargos ni contacto.

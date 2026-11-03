@@ -56,12 +56,13 @@ Dentro de Claude Code:
 ### Cómo preparar Canva
 
 - Creá una carpeta (por ejemplo **CVs**) y poné ahí tu CV base, con el nombre que pusiste en
-  `config.yaml` (`canva.cv_base`, por ejemplo **CV Base**).
+  `config.yaml` (`canva.cv_base`: **CV Base ES** y **CV Base EN**).
 - Conviene que cada sección (perfil, cada experiencia, habilidades) sea un cuadro de texto
   separado, con un poco de aire: el agente reescribe los textos manteniendo una longitud
   parecida para que nada se desborde.
-- Si tenés versión en inglés, creá también **CV Base EN**: el agente usa la del idioma de la
-  oferta.
+- El agente usa el diseño del idioma de la oferta y pone el contacto según el país: Buenos
+  Aires para Argentina o la residencia en Málaga para España (`contact_variants` en
+  `data/cv_master.yaml`).
 - El agente **nunca modifica el CV base**: cada postulación genera una copia nueva en la misma
   carpeta.
 

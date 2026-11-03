@@ -46,6 +46,7 @@ class MasterCV(_YamlModel):
     name: str
     headline: str
     contact: dict[str, str] = {}
+    contact_variants: dict[str, dict[str, str]] = {}  # por mercado: argentina, espana...
     summary: str
     experience: list[Experience] = []
     projects: list[Project] = []

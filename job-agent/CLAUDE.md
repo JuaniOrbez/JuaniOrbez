@@ -7,7 +7,7 @@ rioplatense y breve.
 ## Herramientas
 
 - **Canva (MCP `canva`)**: sus CVs están en la carpeta de Canva indicada en `config.yaml`
-  (`canva.carpeta`). El modelo base es `canva.cv_base`. Nunca edites el diseño base: siempre
+  (`canva.carpeta`). Hay un diseño base por idioma (`canva.cv_base.es` y `canva.cv_base.en`). Nunca edites el diseño base: siempre
   trabajás sobre una copia.
 - **Navegador (MCP `playwright`)**: es un Chrome con perfil propio en `.browser-profile/`.
   La primera vez se inicia sesión en LinkedIn a mano y la sesión queda guardada.

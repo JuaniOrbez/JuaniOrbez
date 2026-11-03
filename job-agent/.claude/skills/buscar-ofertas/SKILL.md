@@ -8,7 +8,7 @@ description: Buscar ofertas nuevas en LinkedIn según config.yaml, puntuarlas co
 1. Corré `python -m job_agent search`. Busca en las páginas públicas de LinkedIn con los
    filtros de `config.yaml` y registra solo las ofertas que no se vieron antes.
 2. Para cada oferta nueva (como máximo 20 por vez), corré `python -m job_agent show <id>` y
-   puntuala de 0 a 100 contra su CV. Tomá como CV el diseño base de Canva (`canva.cv_base`) y, si
+   puntuala de 0 a 100 contra su CV. Tomá como CV el diseño base de Canva (`canva.cv_base`, en el idioma de la oferta) y, si
    existe, `data/cv_master.yaml`. Sé realista: si piden más seniority o años de los que tiene,
    el puntaje baja.
 3. Mostrale una tabla ordenada por puntaje con estas columnas: puntaje, puesto, empresa,

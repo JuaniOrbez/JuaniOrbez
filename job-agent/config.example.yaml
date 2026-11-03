@@ -31,7 +31,10 @@ llm:
 # ---- Lo usa el agente de Claude Code (/postular) ----
 canva:
   carpeta: "CVs"               # carpeta de Canva donde están tus CVs
-  cv_base: "CV Base"           # nombre del diseño que se usa como modelo
+  # Diseño base por idioma. El agente usa el del idioma de la oferta.
+  cv_base:
+    en: "CV Base EN"
+    es: "CV Base ES"
   # Nombre de cada copia adaptada. Variables: {empresa} {puesto} {fecha}
   nombre_copia: "CV - {empresa} - {puesto} - {fecha}"
 
